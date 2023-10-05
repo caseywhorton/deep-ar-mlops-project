@@ -127,9 +127,9 @@ def get_pipeline(
     sagemaker_project_name=None,
     role=None,
     default_bucket=None,
-    model_package_group_name="AbalonePackageGroup",
-    pipeline_name="AbalonePipeline",
-    base_job_prefix="Abalone",
+    model_package_group_name="WeatherPackageGroup",
+    pipeline_name="WeatherPipeline",
+    base_job_prefix="Weather",
     processing_instance_type="ml.m5.xlarge",
     training_instance_type="ml.m5.large",
 ):
@@ -143,6 +143,10 @@ def get_pipeline(
     Returns:
         an instance of a pipeline
     """
+    write_bucket = "cw-sagemaker-domain-2"
+    write_prefix = "deep_ar"
+    input_data_uri = f"s3://{write_bucket}/{write_prefix}/data/train" #ok
+    
     sagemaker_session = get_session(region, default_bucket)
     if role is None:
         role = sagemaker.session.get_execution_role(sagemaker_session)
@@ -150,13 +154,14 @@ def get_pipeline(
     pipeline_session = get_pipeline_session(region, default_bucket)
 
     # parameters for pipeline execution
-    processing_instance_count = ParameterInteger(name="ProcessingInstanceCount", default_value=1)
+    processing_instance_count = ParameterInteger(name="ProcessingInstanceCount",
+                                                 default_value=1)
     model_approval_status = ParameterString(
         name="ModelApprovalStatus", default_value="PendingManualApproval"
     )
     input_data = ParameterString(
         name="InputDataUrl",
-        default_value=f"s3://sagemaker-servicecatalog-seedcode-{region}/dataset/abalone-dataset.csv",
+        default_value=input_data_uri,
     )
 
     # processing step for feature engineering
@@ -164,14 +169,14 @@ def get_pipeline(
         framework_version="0.23-1",
         instance_type=processing_instance_type,
         instance_count=processing_instance_count,
-        base_job_name=f"{base_job_prefix}/sklearn-abalone-preprocess",
+        base_job_name=f"{base_job_prefix}/deepar-weather-preprocess",
         sagemaker_session=pipeline_session,
         role=role,
     )
     step_args = sklearn_processor.run(
         outputs=[
             ProcessingOutput(output_name="train", source="/opt/ml/processing/train"),
-            ProcessingOutput(output_name="validation", source="/opt/ml/processing/validation"),
+            #ProcessingOutput(output_name="validation", source="/opt/ml/processing/validation"),
             ProcessingOutput(output_name="test", source="/opt/ml/processing/test"),
         ],
         code=os.path.join(BASE_DIR, "preprocess.py"),
@@ -183,7 +188,7 @@ def get_pipeline(
     )
 
     # training step for generating model artifacts
-    model_path = f"s3://{sagemaker_session.default_bucket()}/{base_job_prefix}/AbaloneTrain"
+    model_path = f"s3://{sagemaker_session.default_bucket()}/{base_job_prefix}/WeatherTrain"
     image_uri = sagemaker.image_uris.retrieve(
         framework="xgboost",
         region=region,
@@ -196,7 +201,7 @@ def get_pipeline(
         instance_type=training_instance_type,
         instance_count=1,
         output_path=model_path,
-        base_job_name=f"{base_job_prefix}/abalone-train",
+        base_job_name=f"{base_job_prefix}/weather-train",
         sagemaker_session=pipeline_session,
         role=role,
     )
@@ -227,7 +232,7 @@ def get_pipeline(
         },
     )
     step_train = TrainingStep(
-        name="TrainAbaloneModel",
+        name="TrainWeatherForecast",
         step_args=step_args,
     )
 
@@ -237,7 +242,7 @@ def get_pipeline(
         command=["python3"],
         instance_type=processing_instance_type,
         instance_count=1,
-        base_job_name=f"{base_job_prefix}/script-abalone-eval",
+        base_job_name=f"{base_job_prefix}/script-weather-eval",
         sagemaker_session=pipeline_session,
         role=role,
     )
@@ -260,12 +265,12 @@ def get_pipeline(
         code=os.path.join(BASE_DIR, "evaluate.py"),
     )
     evaluation_report = PropertyFile(
-        name="AbaloneEvaluationReport",
+        name="WeatherEvaluationReport",
         output_name="evaluation",
         path="evaluation.json",
     )
     step_eval = ProcessingStep(
-        name="EvaluateAbaloneModel",
+        name="WeatherEvalModel",
         step_args=step_args,
         property_files=[evaluation_report],
     )
@@ -295,7 +300,7 @@ def get_pipeline(
         model_metrics=model_metrics,
     )
     step_register = ModelStep(
-        name="RegisterAbaloneModel",
+        name="RegisterWeatherModel",
         step_args=step_args,
     )
 
@@ -309,7 +314,7 @@ def get_pipeline(
         right=6.0,
     )
     step_cond = ConditionStep(
-        name="CheckMSEAbaloneEvaluation",
+        name="CheckRMSEweatherEvaluation",
         conditions=[cond_lte],
         if_steps=[step_register],
         else_steps=[],
@@ -325,7 +330,8 @@ def get_pipeline(
             model_approval_status,
             input_data,
         ],
-        steps=[step_process, step_train, step_eval, step_cond],
+        steps=[step_process, step_train]
+      #, step_eval, step_cond],
         sagemaker_session=pipeline_session,
     )
     return pipeline
