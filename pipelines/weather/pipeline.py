@@ -180,8 +180,8 @@ def get_pipeline(
     # Instantiate AWS services session and client objects
     sess = sagemaker.Session()
     sagemaker_session = get_session(region, default_bucket)
-      if role is None:
-          role = sagemaker.session.get_execution_role(sagemaker_session)
+    if role is None:
+        role = sagemaker.session.get_execution_role(sagemaker_session)
     write_bucket = "cw-sagemaker-domain-2"
     write_prefix = "deep_ar"
     
