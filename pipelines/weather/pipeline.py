@@ -179,10 +179,12 @@ def get_pipeline(
     #####
     # Instantiate AWS services session and client objects
     print('***** BASE_DIR', BASE_DIR)
+    print('***** Get Sagemaker Session *****')
     sess = sagemaker.Session()
     sagemaker_session = get_session(region, default_bucket)
     if role is None:
         role = sagemaker.session.get_execution_role(sagemaker_session)
+    print('***** Set run parameters *****')
     write_bucket = "cw-sagemaker-domain-2"
     write_prefix = "deep_ar"
     
@@ -253,6 +255,7 @@ def get_pipeline(
     # Set up pipeline input parameters
 
     # Set processing instance type
+    print('***** Set instance types *****')
     process_instance_type_param = ParameterString(
         name="ProcessingInstanceType",
         default_value=process_instance_type,
@@ -325,11 +328,11 @@ def get_pipeline(
     #    name="ModelApprovalStatus", default_value="Approved"
     #)
     #####
-
-    input_data_uri = f"s3://{write_bucket}/{write_prefix}/data/train" #ok
     
+    input_data_uri = f"s3://{write_bucket}/{write_prefix}/data/train" #ok
+    print('***** Get pipeline session *****')
     pipeline_session = get_pipeline_session(region, default_bucket)
-
+    
     # parameters for pipeline execution
     processing_instance_count = ParameterInteger(name="ProcessingInstanceCount",
                                                  default_value=1)
@@ -344,7 +347,7 @@ def get_pipeline(
     # processing step for feature engineering
 
     #inputs = []
-    
+    print('***** Preprocessing *****')
     outputs = [
         ProcessingOutput(
             source = "/opt/ml/processing/output/full_data",
@@ -389,7 +392,9 @@ def get_pipeline(
 
     ####
     model_path = f"s3://{sagemaker_session.default_bucket()}/{base_job_prefix}/WeatherTrain"
+    print('model_path: ',model_path)
 
+    print('***** Training *****')
     freq = "H"
     prediction_length = 24
     context_length = 72
@@ -432,7 +437,7 @@ def get_pipeline(
         output_path=f"s3://{s3_output_path}",
         enable_sagemaker_metrics = True
     )
-    
+    print('**** Set Hyperparameters for Algorithm *****')
     estimator.set_hyperparameters(**hyperparameters)
     
     training_data_uri = processing_step.properties.ProcessingOutputConfig.Outputs["train_data"].S3Output.S3Uri
@@ -531,7 +536,7 @@ def get_pipeline(
         else_steps=[],
     )
     """
-
+    print('***** Creating pipeline from steps. *****')
     # Create the Pipeline with all component steps and parameters
     pipeline = Pipeline(
         name=pipeline_name,
