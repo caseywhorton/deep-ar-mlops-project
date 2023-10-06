@@ -268,7 +268,7 @@ def get_pipeline(
         name="TrainingInstanceCount",
         default_value=train_instance_count
     )
-    
+    """
     # Set deployment instance type
     deploy_instance_type_param = ParameterString(
         name="DeployInstanceType",
@@ -318,11 +318,11 @@ def get_pipeline(
         name="ModelExplainabilitySuppliedBaselineConstraints", 
         default_value=""
     )
-    
+    """
     # Set model approval param
-    model_approval_status_param = ParameterString(
-        name="ModelApprovalStatus", default_value="Approved"
-    )
+    #model_approval_status_param = ParameterString(
+    #    name="ModelApprovalStatus", default_value="Approved"
+    #)
     #####
 
     input_data_uri = f"s3://{write_bucket}/{write_prefix}/data/train" #ok
@@ -342,7 +342,7 @@ def get_pipeline(
 
     # processing step for feature engineering
 
-    inputs = []
+    #inputs = []
     
     outputs = [
         ProcessingOutput(
@@ -536,16 +536,17 @@ def get_pipeline(
         parameters=[process_instance_type_param, 
                     train_instance_type_param, 
                     train_instance_count_param, 
-                    deploy_instance_type_param,
-                    deploy_instance_count_param,
-                    clarify_instance_type_param,
-                    skip_check_model_bias_param,
-                    register_new_baseline_model_bias_param,
-                    supplied_baseline_constraints_model_bias_param,
-                    skip_check_model_explainability_param,
-                    register_new_baseline_model_explainability_param,
-                    supplied_baseline_constraints_model_explainability_param,
-                    model_approval_status_param],
+                    #deploy_instance_type_param,
+                    #deploy_instance_count_param,
+                    #clarify_instance_type_param,
+                    #skip_check_model_bias_param,
+                    #register_new_baseline_model_bias_param,
+                    #supplied_baseline_constraints_model_bias_param,
+                    #skip_check_model_explainability_param,
+                    #register_new_baseline_model_explainability_param,
+                    #supplied_baseline_constraints_model_explainability_param,
+                    #model_approval_status_param
+                   ],
         steps=[
             processing_step,
             train_step,
