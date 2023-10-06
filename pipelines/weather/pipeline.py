@@ -186,6 +186,7 @@ def get_pipeline(
     write_prefix = "deep_ar"
     
     region = sess.boto_region_name
+    region = 'us-east-1'
     s3_client = boto3.client("s3", region_name=region)
     sm_client = boto3.client("sagemaker", region_name=region)
     sm_runtime_client = boto3.client("sagemaker-runtime")
