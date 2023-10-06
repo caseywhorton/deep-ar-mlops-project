@@ -129,7 +129,7 @@ if __name__ == "__main__":
     local_dir = "/opt/ml/processing"
     encoding = "utf-8"
     os.environ["AWS_DEFAULT_REGION"] = region
-
+    
     logger.debug("Getting CSV data from S3 and Cleaning")
 
     # Get S3 raw data location
@@ -138,7 +138,8 @@ if __name__ == "__main__":
     # get raw data into container
     today = datetime.now(timezone.utc)
     lag_365 = datetime.now(timezone.utc) + timedelta(days=-365)
-
+    print('bucket:',bucket)
+    print('prefix:',prefix)
     objects = s3.list_objects(Bucket=bucket, Prefix=prefix)
 
     df_list = []
