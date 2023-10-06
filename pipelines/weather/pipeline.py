@@ -231,10 +231,10 @@ def get_pipeline(
     explainability_report_output_uri = f"s3://{write_bucket}/{write_prefix}/clarify_output/pipeline/explainability"
 
     # Set names of pipeline objects
-    #pipeline_name = "WeatherPipeline"
-    #pipeline_model_name = "humidity-deep-ar-pipeline"
-    #model_package_group_name = "weather-model-group"
-    #base_job_name_prefix = "humidity-deep-ar"
+    pipeline_name = "WeatherPipeline"
+    pipeline_model_name = "WeatherPipelineModel"
+    model_package_group_name = "weather-model-group"
+    base_job_name_prefix = "Weather"
     endpoint_config_name = f"{pipeline_model_name}-endpoint-config"
     endpoint_name = f"{pipeline_model_name}-endpoint"
     
