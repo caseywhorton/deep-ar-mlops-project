@@ -370,7 +370,7 @@ def get_pipeline(
     preprocessing_processor = ScriptProcessor(
     command = ['python3'],
     image_uri = preprocessing_image_uri,
-    role = sagemaker_role,
+    role = role,
     instance_count = 1,
     instance_type = 'ml.m5.xlarge',
     max_runtime_in_seconds = 1200,
