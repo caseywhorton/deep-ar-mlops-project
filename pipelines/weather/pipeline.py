@@ -231,10 +231,10 @@ def get_pipeline(
     explainability_report_output_uri = f"s3://{write_bucket}/{write_prefix}/clarify_output/pipeline/explainability"
 
     # Set names of pipeline objects
-    pipeline_name = "HumidityDeepARPipeline"
-    pipeline_model_name = "humidity-deep-ar-pipeline"
-    model_package_group_name = "humidity-deep-ar-model-group"
-    base_job_name_prefix = "humidity-deep-ar"
+    #pipeline_name = "WeatherPipeline"
+    #pipeline_model_name = "humidity-deep-ar-pipeline"
+    #model_package_group_name = "weather-model-group"
+    #base_job_name_prefix = "humidity-deep-ar"
     endpoint_config_name = f"{pipeline_model_name}-endpoint-config"
     endpoint_name = f"{pipeline_model_name}-endpoint"
     
@@ -260,7 +260,7 @@ def get_pipeline(
         name="ProcessingInstanceType",
         default_value=process_instance_type,
     )
-    
+    """
     # Set training instance type
     train_instance_type_param = ParameterString(
         name="TrainingInstanceType",
@@ -272,6 +272,7 @@ def get_pipeline(
         name="TrainingInstanceCount",
         default_value=train_instance_count
     )
+    """
     """
     # Set deployment instance type
     deploy_instance_type_param = ParameterString(
@@ -541,8 +542,8 @@ def get_pipeline(
     pipeline = Pipeline(
         name=pipeline_name,
         parameters=[process_instance_type_param, 
-                    train_instance_type_param, 
-                    train_instance_count_param, 
+                    #train_instance_type_param, 
+                    #train_instance_count_param, 
                     #deploy_instance_type_param,
                     #deploy_instance_count_param,
                     #clarify_instance_type_param,
@@ -556,14 +557,14 @@ def get_pipeline(
                    ],
         steps=[
             processing_step,
-            train_step,
+            #train_step,
             #lambda_eval_step
             # evaluate the model
             #create_model_step,
             #step_transform,
             # evaluate_step
         ],
-        sagemaker_session=sess    
+        sagemaker_session=pipeline_session   
     )
     
     return pipeline
