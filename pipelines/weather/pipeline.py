@@ -383,7 +383,7 @@ def get_pipeline(
                      "--bucket", read_bucket, 
                      "--prefix", read_prefix, 
                     "--target-feature", "properties.relativeHumidity.value"], 
-        code = BASE_DIR + 'preprocess.py'
+        code = BASE_DIR + '/preprocess.py'
    # code = os.path.join(BASE_DIR, "preprocess.py")
     )
 
