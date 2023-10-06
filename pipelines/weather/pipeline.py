@@ -178,6 +178,7 @@ def get_pipeline(
     """
     #####
     # Instantiate AWS services session and client objects
+    print('***** BASE_DIR', BASE_DIR)
     sess = sagemaker.Session()
     sagemaker_session = get_session(region, default_bucket)
     if role is None:
@@ -382,7 +383,8 @@ def get_pipeline(
                      "--bucket", read_bucket, 
                      "--prefix", read_prefix, 
                     "--target-feature", "properties.relativeHumidity.value"], 
-    code = os.path.join(BASE_DIR, "preprocess.py")
+        code = BASE_DIR + 'preprocess.py'
+   # code = os.path.join(BASE_DIR, "preprocess.py")
     )
 
     ####
