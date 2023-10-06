@@ -1,120 +1,240 @@
-"""Feature engineers the abalone dataset."""
 import argparse
-import logging
-import os
 import pathlib
-import requests
-import tempfile
-
 import boto3
-import numpy as np
+import os
+import logging
+import json
 import pandas as pd
-
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+import numpy as np
+import urllib.parse
+import datetime
+from typing import List, Dict
+from datetime import datetime, timezone, timedelta, date
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
 
-# Since we get a headerless CSV file we specify the column names here.
-feature_columns_names = [
-    "sex",
-    "length",
-    "diameter",
-    "height",
-    "whole_weight",
-    "shucked_weight",
-    "viscera_weight",
-    "shell_weight",
-]
-label_column = "rings"
-
-feature_columns_dtype = {
-    "sex": str,
-    "length": np.float64,
-    "diameter": np.float64,
-    "height": np.float64,
-    "whole_weight": np.float64,
-    "shucked_weight": np.float64,
-    "viscera_weight": np.float64,
-    "shell_weight": np.float64,
-}
-label_column_dtype = {"rings": np.float64}
+def columnNameReformat(column_name: str, target_name: str) -> str:
+    """Reformats a column name for easier use in applications."""
+    if column_name == target_name:
+        return "target"
+    else:
+        column_name = column_name.lower()
+        column_name = column_name.replace("properties", "")
+        column_name = column_name.replace(".", "_")
+        column_name = column_name.strip()
+        # return column_name
+        return "target"
 
 
-def merge_two_dicts(x, y):
-    """Merges two dicts, returning a new copy."""
-    z = x.copy()
-    z.update(y)
-    return z
+def preprocessQuant(feature) -> np.array:
+    """Processes a quantiative feature for input to an ML algorithm"""
+    # scaler = StandardScaler()
+    x = np.array(feature)
+    np.nan_to_num(x, copy=False)
+    # x_tran = scaler.fit_transform(x.reshape(-1,1))
+    return x
+
+
+def featureDict(start: datetime, feature_name: str, feature_data: List) -> Dict:
+    """Creates a python Dict object for a feature with a given start date."""
+
+    return dict(
+        {
+            "start": start,
+            feature_name: feature_data.reshape(1, len(feature_data))[0].tolist(),
+        }
+    )
+
+
+def getStart(df: pd.DataFrame) -> str:
+    """Gets the start date for the input data from the dataframe."""
+    # sort the dataframe by the measurement time
+    return df.index[0]
+
+
+def getStartString(df: pd.DataFrame) -> str:
+    """Gets the start date in a string format"""
+    stp = datetime.strptime(df["properties.timestamp"][0], "%Y-%m-%dT%H:%M:%S%z")
+    return datetime.strftime(stp, "%Y-%m-%d %H:%M:%S")
+
+
+def preprocessDataFrame(df: pd.DataFrame) -> pd.DataFrame:
+    """Processes the dataframe."""
+
+    stp = df["properties.timestamp"].apply(
+        lambda x: datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S%z")
+    )
+
+    # set the index
+    df.index = stp
+
+    # sort the dataframe by the index
+    df.sort_index(inplace=True)
+
+    # rename index
+    df.index.name = "timestamp"
+
+    return df
+
+
+def write_dicts_to_file(path, data):
+    with open(path, "wb") as fp:
+        for d in data:
+            fp.write(json.dumps(d).encode("utf-8"))
+            fp.write("\n".encode("utf-8"))
+
+
+def series_to_obj(ts, feature_name=None, cat=None):
+    obj = {"start": str(ts.index[0]), feature_name: list(ts)}
+    if cat is not None:
+        obj["cat"] = cat
+    return obj
+
+
+def series_to_jsonline(ts, feature_name=None, cat=None):
+    return json.dumps(series_to_obj(ts, feature_name, cat))
+
+
+def dict_to_series(time_dict: dict) -> pd.Series:
+    """Translates a dictionary to a time series using a pandas series data type."""
+    time_index = pd.date_range(
+        start=time_dict["start"], periods=len(list(time_dict.values())[1]), freq="H"
+    )
+    time_index = [x.strftime("%Y-%m-%d %H:%M:%S") for x in time_index]
+
+    return pd.Series(data=list(time_dict.values())[1], index=time_index)
 
 
 if __name__ == "__main__":
-    logger.debug("Starting preprocessing.")
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input-data", type=str, required=True)
-    args = parser.parse_args()
+    parser.add_argument("--split-days", type=int, default=30)
+    parser.add_argument("--region", type=str, default="us-east-1")
+    parser.add_argument("--bucket", type=str)
+    parser.add_argument("--prefix", type=str)
+    parser.add_argument("--target-feature", type=str)
+    args, _ = parser.parse_known_args()
+    logger.info("Received arguments {}".format(args))
 
-    base_dir = "/opt/ml/processing"
-    pathlib.Path(f"{base_dir}/data").mkdir(parents=True, exist_ok=True)
-    input_data = args.input_data
-    bucket = input_data.split("/")[2]
-    key = "/".join(input_data.split("/")[3:])
+    # Get arguments passed in job_arguments
+    split_days = args.split_days
+    region = args.region
+    bucket = args.bucket
+    prefix = args.prefix
+    target_feature = args.target_feature
 
-    logger.info("Downloading data from bucket: %s, key: %s", bucket, key)
-    fn = f"{base_dir}/data/abalone-dataset.csv"
-    s3 = boto3.resource("s3")
-    s3.Bucket(bucket).download_file(key, fn)
+    # Set local path prefix in the processing container
+    local_dir = "/opt/ml/processing"
+    encoding = "utf-8"
+    os.environ["AWS_DEFAULT_REGION"] = region
 
-    logger.debug("Reading downloaded data.")
-    df = pd.read_csv(
-        fn,
-        header=None,
-        names=feature_columns_names + [label_column],
-        dtype=merge_two_dicts(feature_columns_dtype, label_column_dtype),
+    logger.debug("Getting CSV data from S3 and Cleaning")
+
+    # Get S3 raw data location
+    s3 = boto3.client("s3")
+
+    # get raw data into container
+    today = datetime.now(timezone.utc)
+    lag_365 = datetime.now(timezone.utc) + timedelta(days=-365)
+
+    objects = s3.list_objects(Bucket=bucket, Prefix=prefix)
+
+    df_list = []
+    for o in objects["Contents"]:
+        if o["LastModified"] <= today and o["LastModified"] >= lag_365:
+            obj = s3.get_object(Bucket=bucket, Key=o["Key"])
+            df_list.append(pd.read_csv(obj["Body"]))
+
+    # drop the duplicates from the dataframe
+    preprocessed_df = pd.concat(df_list).drop_duplicates().reset_index()
+
+    # process the features in the columns of the dataframe
+    start = getStart(preprocessed_df)
+    start_str = getStartString(preprocessed_df)
+    features = ["properties.relativeHumidity.value", "properties.temperature.value"]
+
+    # preprocess the feature data
+    mylist = list()
+
+    for feature in features:
+        mylist.append(
+            featureDict(
+                start_str,
+                columnNameReformat(feature, target_feature),
+                # feature,
+                preprocessQuant(preprocessed_df[feature]),
+            )
+        )
+
+    # create the individual time series for each feature
+    time_series = []
+    for i in mylist:
+        time_series.append(dict_to_series(i))
+
+    # Split into train and test data
+    logger.info("Splitting data into train, validation, and test sets")
+
+    # Create testing data
+    time_series_test = []
+    for ts in time_series:
+        time_series_test.append(ts[-24:])
+
+    test_features_output_path = os.path.join(
+        "/opt/ml/processing/output/test", "test.json"
     )
-    os.unlink(fn)
 
-    logger.debug("Defining transformers.")
-    numeric_features = list(feature_columns_names)
-    numeric_features.remove("sex")
-    numeric_transformer = Pipeline(
-        steps=[("imputer", SimpleImputer(strategy="median")), ("scaler", StandardScaler())]
+    logger.info("Saving test features to {}".format(test_features_output_path))
+
+    i = 0
+    with open(test_features_output_path, "wb") as f:
+        for ts in time_series:
+            f.write(
+                series_to_jsonline(ts, feature_name=list(mylist[i].keys())[1]).encode(
+                    "utf-8"
+                )
+            )
+            f.write("\n".encode(encoding))
+            i += 1
+
+    logger.info(f"Testing data saved to {test_features_output_path}")
+
+    # Create training data
+    time_series_training = []
+    for ts in time_series:
+        time_series_training.append(ts[:-24])
+
+    train_features_output_path = os.path.join(
+        "/opt/ml/processing/output/train", "train.json"
     )
 
-    categorical_features = ["sex"]
-    categorical_transformer = Pipeline(
-        steps=[
-            ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
-            ("onehot", OneHotEncoder(handle_unknown="ignore")),
-        ]
+    logger.info("Saving train features to {}".format(train_features_output_path))
+
+    i = 0
+    with open(train_features_output_path, "wb") as f:
+        for ts in time_series:
+            f.write(
+                series_to_jsonline(ts, feature_name=list(mylist[i].keys())[1]).encode(
+                    "utf-8"
+                )
+            )
+            f.write("\n".encode(encoding))
+            i += 1
+
+    logger.info(f"Training data saved to {train_features_output_path}")
+
+    # Create full dataset
+    time_series_full = []
+    for ts in time_series:
+        time_series_full.append(ts)
+
+    full_data_output_path = os.path.join(
+        "/opt/ml/processing/output/full_data", "full_data.csv"
     )
 
-    preprocess = ColumnTransformer(
-        transformers=[
-            ("num", numeric_transformer, numeric_features),
-            ("cat", categorical_transformer, categorical_features),
-        ]
-    )
+    logger.info("Saving full data to {}".format(full_data_output_path))
 
-    logger.info("Applying transforms.")
-    y = df.pop("rings")
-    X_pre = preprocess.fit_transform(df)
-    y_pre = y.to_numpy().reshape(len(y), 1)
-
-    X = np.concatenate((y_pre, X_pre), axis=1)
-
-    logger.info("Splitting %d rows of data into train, validation, test datasets.", len(X))
-    np.random.shuffle(X)
-    train, validation, test = np.split(X, [int(0.7 * len(X)), int(0.85 * len(X))])
-
-    logger.info("Writing out datasets to %s.", base_dir)
-    pd.DataFrame(train).to_csv(f"{base_dir}/train/train.csv", header=False, index=False)
-    pd.DataFrame(validation).to_csv(
-        f"{base_dir}/validation/validation.csv", header=False, index=False
-    )
-    pd.DataFrame(test).to_csv(f"{base_dir}/test/test.csv", header=False, index=False)
+    preprocessed_df.to_csv(full_data_output_path, index = False)
+    
+    logger.info(f"Full data saved to {full_data_output_path}")
