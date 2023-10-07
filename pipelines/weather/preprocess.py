@@ -154,7 +154,7 @@ if __name__ == "__main__":
     # process the features in the columns of the dataframe
     start = getStart(preprocessed_df)
     start_str = getStartString(preprocessed_df)
-    features = ["properties.relativeHumidity.value", "properties.temperature.value"]
+    features = ["properties.temperature.value","properties.relativeHumidity.value"]
 
     # preprocess the feature data
     mylist = list()

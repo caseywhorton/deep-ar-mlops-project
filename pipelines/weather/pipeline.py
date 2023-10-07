@@ -198,7 +198,7 @@ def get_pipeline(
     
     # Fetch SageMaker execution role
     sagemaker_role = sagemaker.get_execution_role()
-    preprocessing_image_uri = "536826985609.dkr.ecr.us-east-1.amazonaws.com/cw-sagemaker:latest"
+    preprocessing_image_uri = ""
     training_image_uri = retrieve("forecasting-deepar", region)
     
     # S3 locations used for parameterizing the notebook run
