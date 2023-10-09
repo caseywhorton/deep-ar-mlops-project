@@ -454,7 +454,9 @@ def get_pipeline(
             "test": testing_data_uri }
     )
 
-    """
+    # processing step for batch transform
+
+    
     # processing step for evaluation
     script_eval = ScriptProcessor(
         image_uri=image_uri,
@@ -467,10 +469,17 @@ def get_pipeline(
     )
     step_args = script_eval.run(
         inputs=[
+            # actual predictions from batch transform
             ProcessingInput(
-                source=step_train.properties.ModelArtifacts.S3ModelArtifacts,
-                destination="/opt/ml/processing/model",
+                source=step_batch_transform.properties.ProcessingOutputConfig.Outputs[
+                "test"
+                ].S3Output.S3Uri,
+                destination="/opt/ml/processing/actuals"
             ),
+            #ProcessingInput(
+            #    source=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+            #    destination="/opt/ml/processing/model",
+            #),
             ProcessingInput(
                 source=step_process.properties.ProcessingOutputConfig.Outputs[
                     "test"
@@ -488,12 +497,12 @@ def get_pipeline(
         output_name="evaluation",
         path="evaluation.json",
     )
-    step_eval = ProcessingStep(
+    evaluation_step = ProcessingStep(
         name="WeatherEvalModel",
         step_args=step_args,
         property_files=[evaluation_report],
     )
-
+    """
     # register model step that will be conditionally executed
     model_metrics = ModelMetrics(
         model_statistics=MetricsSource(
@@ -544,8 +553,8 @@ def get_pipeline(
     pipeline = Pipeline(
         name=pipeline_name,
         parameters=[process_instance_type_param, 
-                    #train_instance_type_param, 
-                    #train_instance_count_param, 
+                    train_instance_type_param, 
+                    train_instance_count_param, 
                     #deploy_instance_type_param,
                     #deploy_instance_count_param,
                     #clarify_instance_type_param,
@@ -559,12 +568,13 @@ def get_pipeline(
                    ],
         steps=[
             processing_step,
-            #train_step,
+            train_step,
             #lambda_eval_step
             # evaluate the model
             #create_model_step,
-            #step_transform,
+            #step_batch_transform,
             # evaluate_step
+            evaluation_step
         ],
         sagemaker_session=pipeline_session   
     )
