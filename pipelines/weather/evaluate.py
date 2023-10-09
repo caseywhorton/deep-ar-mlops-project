@@ -4,42 +4,90 @@ import logging
 import pathlib
 import pickle
 
+import os 
 import numpy as np
 import pandas as pd
-
-from sklearn.metrics import mean_squared_error
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
+# output_dir = "/opt/ml/processing/evaluation"
+# test_path = "/opt/ml/processing/test/test.json"
+# actuals_path = "/opt/ml/processing/actuals/test.json.out"
+
+def interpolate_zero(x):
+    ind = 0
+    for i in x:
+        if i == 0.0:
+            x[ind] = (x[ind-1]+x[ind+1])/2.0
+        ind += 1
+    return(x)
+
+def rmse_deepar(preds, actuals, split_days):
+
+    num_ts = len(preds)
+    assert len(preds) == len(actuals), "Predictions and actuals should have same number of time series."
+
+    squares = []
+    for i in range(len(preds)):
+        squares.append(np.subtract(preds[i]['mean'], interpolate_zero(actuals[i]['target'][-split_days:]))**2)
+        
+    sum_squares = np.sum(np.reshape(squares, num_ts*split_days))
+    rmse = np.sqrt((1.0/(num_ts*split_days))*sum_squares)
+    return(rmse)
+
+def std_deepar(preds, actuals, split_days):
+
+    num_ts = len(preds)
+
+    preds_list = []
+    for i in preds:
+        preds_list.append(i['mean'])
+
+    yhat = np.reshape(preds_list, num_ts*split_days)
+
+    actuals_list = []
+    for i in actuals:
+        actuals_list.append(i['target'][-split_days:])
+
+    y = np.reshape(actuals_list, num_ts*split_days)    
+
+    return(np.std(y - yhat))
 
 
 if __name__ == "__main__":
     logger.debug("Starting evaluation.")
 
-    logger.debug("Geting model predictions...")
-
-    logger.debug("Reading test data.")
-    #test_path = "/opt/ml/processing/test/test.csv"
-    #df = pd.read_csv(test_path, header=None)
+    logger.debug("Reading test data...")
+    test_path = "/opt/ml/processing/test/test.json"
+    actuals = []
+    with open(test_path) as f:
+        for line in f:
+            actuals.append(json.loads(line))
 
     logger.debug("Reading predictions data....")
-
+    actuals_path = "/opt/ml/processing/actuals/test.json.out"
+    preds = []
+    with open(actuals_path) as f:
+        for line in f:
+            preds.append(json.loads(line))
+            
+    
     logger.debug("Calculating root mean squared error.")
-    #mse = mean_squared_error(y_test, predictions)
+    rmse_deepar_value = rmse_deepar(preds, actuals, split_days = 24)
 
     logger.debug("Calculation standard deviation of errors.")
-    #std = np.std(y_test - predictions)
+    standard_deviation = std_deepar(preds, actuals, 24)
 
     logger.debug("Creating report dictionary...")
     report_dict = {
-        "regression_metrics": {
-            "mse": {
-                "value": mse,
-                "standard_deviation": std
-            },
-        },
+    "regression_metrics": {
+    "rmse" : {
+      "value" : rmse_deepar_value,
+      "standard_deviation" : standard_deviation
+      }
+    }
     }
 
     output_dir = "/opt/ml/processing/evaluation"
