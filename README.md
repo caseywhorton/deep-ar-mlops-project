@@ -6,7 +6,7 @@ The template provides a starting point for bringing your SageMaker Pipeline deve
 |-- codebuild-buildspec.yml
 |-- CONTRIBUTING.md
 |-- pipelines
-|   |-- abalone
+|   |-- weather
 |   |   |-- evaluate.py
 |   |   |-- __init__.py
 |   |   |-- pipeline.py
