@@ -1,16 +1,21 @@
-"""Evaluation script for measuring mean squared error."""
+
 import json
 import logging
 import pathlib
 import pickle
+import tarfile
 
-import os 
 import numpy as np
 import pandas as pd
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
+
+"""Evaluation script for measuring mean squared error."""
+
+import os 
+
 
 # output_dir = "/opt/ml/processing/evaluation"
 # test_path = "/opt/ml/processing/test/test.json"
@@ -93,7 +98,7 @@ if __name__ == "__main__":
     output_dir = "/opt/ml/processing/evaluation"
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    logger.info("Writing out evaluation report with mse: %f", rmse)
+    logger.info("Writing out evaluation report with mse: %f", rmse_deepar_value)
     evaluation_path = f"{output_dir}/evaluation.json"
     with open(evaluation_path, "w") as f:
         f.write(json.dumps(report_dict))
