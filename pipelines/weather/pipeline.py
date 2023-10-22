@@ -582,7 +582,7 @@ def get_pipeline(
         ),
         steps=[
             processing_step,
-            #train_step,
+            train_step,
             #create_model_step,
             #step_batch_transform,
             #evaluation_step
