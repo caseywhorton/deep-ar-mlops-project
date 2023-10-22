@@ -81,6 +81,14 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.pipeline_experiment_config import PipelineExperimentConfig
 
+from sagemaker.transformer import Transformer
+
+from sagemaker.workflow.pipeline_context import PipelineSession
+
+from sagemaker.transformer import Transformer
+from sagemaker.inputs import TransformInput
+from sagemaker.workflow.steps import TransformStep
+
 ##### Define functions #####
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
