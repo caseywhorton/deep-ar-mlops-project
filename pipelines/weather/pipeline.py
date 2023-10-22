@@ -192,10 +192,10 @@ def get_pipeline(
     print('***** Get Sagemaker Session *****')
     sess = sagemaker.Session()
     sagemaker_session = get_session(region, default_bucket)
-    if role is None:
-        role = sagemaker.session.get_execution_role(sagemaker_session)
+    if sagemaker_role is None:
+        sagemaker_role = sagemaker.session.get_execution_role(sagemaker_session)
     print('**** Role *****')
-    print('role:',role)
+    print('sagemaker_role:',sagemaker_role)
     print('***** Set run parameters *****')
     write_bucket = "cw-sagemaker-domain-2"
     write_prefix = "deep_ar"
@@ -207,7 +207,7 @@ def get_pipeline(
     sm_runtime_client = boto3.client("sagemaker-runtime")
     
     # Fetch SageMaker execution role
-    sagemaker_role = sagemaker.get_execution_role()
+    #sagemaker_role = sagemaker.get_execution_role()
     preprocessing_image_uri = ""
     training_image_uri = retrieve("forecasting-deepar", region)
     
