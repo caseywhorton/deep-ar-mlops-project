@@ -461,7 +461,7 @@ def get_pipeline(
     # Model Creation
     # Create a SageMaker model
     model = sagemaker.model.Model(
-    image_uri=_uri,
+    image_uri=training_image_uri,
     model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
     sagemaker_session=sagemaker_session,
     role=role
