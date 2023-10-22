@@ -410,8 +410,6 @@ def get_pipeline(
     
 
     print('***** Training *****')
-    model_path = f"s3://{sagemaker_session.default_bucket()}/{base_job_prefix}/WeatherTrain"
-    print('model_path: ',model_path)
     freq = "H"
     prediction_length = 24
     context_length = 72
@@ -430,7 +428,7 @@ def get_pipeline(
         "early_stopping_patience": "10",
     }
     
-    s3_output_path = "cw-sagemaker-domain-2/deep_ar/output/"
+    s3_output_path = "s3://cw-sagemaker-domain-2/deep_ar/output/"
     
     # set deepar estimator
     sagemaker_session = sagemaker.Session()
@@ -442,7 +440,7 @@ def get_pipeline(
         role=role,
         instance_count=1,
         instance_type="ml.c4.xlarge",
-        output_path=f"s3://{s3_output_path}",
+        output_path=s3_output_path,
         enable_sagemaker_metrics = True
     )
     print('**** Set Hyperparameters for Algorithm *****')
