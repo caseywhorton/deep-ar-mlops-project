@@ -557,10 +557,10 @@ def get_pipeline(
                     train_instance_type_param, 
                     train_instance_count_param]
         ,
-        pipeline_experiment_config=PipelineExperimentConfig(
-          experiment_name,
-          ExecutionVariables.PIPELINE_EXECUTION_ID
-        ),
+        #pipeline_experiment_config=PipelineExperimentConfig(
+        #  experiment_name,
+        #  ExecutionVariables.PIPELINE_EXECUTION_ID
+        #),
         steps=[
             processing_step,
             train_step,
