@@ -418,8 +418,8 @@ def get_pipeline(
     
     hyperparameters = {
         "time_freq": freq,
-        "context_length": context_length.to_string(),
-        "prediction_length": prediction_length.to_string(),
+        "context_length": context_length,
+        "prediction_length": prediction_length,
         "num_cells": "40",
         "num_layers": "5",
         "likelihood": "gaussian",
