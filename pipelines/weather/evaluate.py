@@ -62,21 +62,25 @@ def std_deepar(preds, actuals, split_days):
 
 
 if __name__ == "__main__":
-    logger.debug("Starting evaluation.")
+    logger.info("Starting evaluation.")
+    
+    print(os.listdir("/opt/ml/processing/predictions/"))
+    print(os.listdir("/opt/ml/processing/actuals/"))
+    
 
-    logger.debug("Reading test data...")
-    test_path = "/opt/ml/processing/test/test.json"
-    actuals = []
+    logger.info("Reading predictions data...")
+    test_path = "/opt/ml/processing/predictions/test.json.out"
+    preds = []
     with open(test_path) as f:
         for line in f:
-            actuals.append(json.loads(line))
+            preds.append(json.loads(line))
 
-    logger.debug("Reading predictions data....")
-    actuals_path = "/opt/ml/processing/actuals/test.json.out"
-    preds = []
+    logger.debug("Reading actual data....")
+    actuals_path = "/opt/ml/processing/actuals/test.json"
+    actuals = []
     with open(actuals_path) as f:
         for line in f:
-            preds.append(json.loads(line))
+            actuals.append(json.loads(line))
             
     
     logger.debug("Calculating root mean squared error.")
