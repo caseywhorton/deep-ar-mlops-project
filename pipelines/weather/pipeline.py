@@ -457,8 +457,8 @@ def get_pipeline(
     print('**** Set Hyperparameters for Algorithm *****')
     estimator.set_hyperparameters(**hyperparameters)
     
-    training_data_uri = processing_step.properties.ProcessingOutputConfig.Outputs["train_data"].S3Output.S3Uri
-    testing_data_uri = processing_step.properties.ProcessingOutputConfig.Outputs["test_data"].S3Output.S3Uri
+    training_data_uri = processing_step.properties.ProcessingOutputConfig.Outputs["train_data"].S3Output.S3Uri.to_string()
+    testing_data_uri = processing_step.properties.ProcessingOutputConfig.Outputs["test_data"].S3Output.S3Uri.to_string()
     # Set pipeline training step
     train_step = TrainingStep(
         name="ModelTrainingStep",
@@ -574,10 +574,10 @@ def get_pipeline(
         ),
         steps=[
             processing_step,
-            train_step,
-            create_model_step,
-            step_batch_transform,
-            evaluation_step
+            #train_step,
+            #create_model_step,
+            #step_batch_transform,
+            #evaluation_step
         ],
         sagemaker_session=sess
         
