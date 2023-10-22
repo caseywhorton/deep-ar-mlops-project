@@ -553,16 +553,16 @@ def get_pipeline(
                     train_instance_type, 
                     train_instance_count]
         ,
-        pipeline_experiment_config=PipelineExperimentConfig(
-          experiment_name,
-          ExecutionVariables.PIPELINE_EXECUTION_ID
-        ),
+        #pipeline_experiment_config=PipelineExperimentConfig(
+        #  experiment_name,
+        #  ExecutionVariables.PIPELINE_EXECUTION_ID
+        #),
         steps=[
             processing_step,
             train_step,
             create_model_step,
-            step_batch_transform,
-            evaluation_step
+            #step_batch_transform,
+            #evaluation_step
         ],
         sagemaker_session=sagemaker_session
         
