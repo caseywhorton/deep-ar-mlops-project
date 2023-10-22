@@ -418,14 +418,14 @@ def get_pipeline(
         "time_freq": freq,
         "context_length": context_length,
         "prediction_length": prediction_length,
-        "num_cells": "40",
-        "num_layers": "5",
+        "num_cells": 40,
+        "num_layers": 5,
         "likelihood": "gaussian",
-        "epochs": "10",
-        "mini_batch_size": "36",
-        "learning_rate": "0.001",
-        "dropout_rate": "0.05",
-        "early_stopping_patience": "10",
+        "epochs": 10,
+        "mini_batch_size": 36,
+        "learning_rate": 0.001,
+        "dropout_rate": 0.05,
+        "early_stopping_patience": 10,
     }
     
     s3_output_path = "s3://cw-sagemaker-domain-2/deep_ar/output/"
