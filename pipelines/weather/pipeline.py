@@ -410,7 +410,7 @@ def get_pipeline(
     
 
     print('***** Training *****')
-    model_path = f"s3://{sagemaker_session.default_bucket()}/{base_job_prefix}/WeatherTrain"
+    model_path = f"s3://{sagemaker_session.default_bucket()}/{base_job_prefix}/WeatherTrain".to_string()
     print('model_path: ',model_path)
     freq = "H"
     prediction_length = 24
@@ -451,7 +451,7 @@ def get_pipeline(
         role=role,
         instance_count=1,
         instance_type="ml.c4.xlarge",
-        output_path=f"s3://{s3_output_path}",
+        output_path=f"s3://{s3_output_path}".to_string(),
         enable_sagemaker_metrics = True
     )
     print('**** Set Hyperparameters for Algorithm *****')
