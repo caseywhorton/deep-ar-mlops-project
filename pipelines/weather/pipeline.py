@@ -446,8 +446,10 @@ def get_pipeline(
         name="modeltrain",
         estimator=estimator,
         inputs={
-            "train": processing_step.properties.ProcessingOutputConfig.Outputs["train_data"].S3Output.S3Uri ,
-            "test": processing_step.properties.ProcessingOutputConfig.Outputs["test_data"].S3Output.S3Uri 
+            "train": TrainingInput(processing_step.properties.ProcessingOutputConfig.Outputs["train_data"].S3Output.S3Uri,
+                                  content_type='application/jsonlines') ,
+            "test": TrainingInput(processing_step.properties.ProcessingOutputConfig.Outputs["test_data"].S3Output.S3Uri,
+                                  content_type='application/jsonlines')
         }
     )
     # Model Creation
