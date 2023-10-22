@@ -540,7 +540,7 @@ def get_pipeline(
         destination = f"{output_path}evaluation",
         output_name = "evaluation")
     ]
-    code=BASE_DIR + "evaluate.py"
+    code=BASE_DIR + "/evaluate.py"
 
     evaluation_report = PropertyFile(
     name="WeatherForecastEvaluationReport",
