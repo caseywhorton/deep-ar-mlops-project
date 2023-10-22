@@ -390,7 +390,7 @@ def get_pipeline(
     instance_type = 'ml.m5.xlarge',
     max_runtime_in_seconds = 1200,
       base_job_name = f"{base_job_prefix}/deepar-weather-preprocess",
-      sagemaker_session=pipeline_session
+      sagemaker_session=sagemaker_session
     )
 
     processing_step = ProcessingStep(
@@ -427,12 +427,7 @@ def get_pipeline(
         "dropout_rate": 0.05,
         "early_stopping_patience": 10,
     }
-    
-    s3_output_path = "s3://cw-sagemaker-domain-2/deep_ar/output/"
-    
-    # set deepar estimator
-    sagemaker_session = sagemaker.Session()
-    
+        
     estimator = sagemaker.estimator.Estimator(
         sagemaker_session=sagemaker_session,
         image_uri=training_image_uri,
@@ -440,21 +435,20 @@ def get_pipeline(
         role=role,
         instance_count=1,
         instance_type="ml.c4.xlarge",
-        output_path=s3_output_path,
+        output_path="s3://cw-sagemaker-domain-2/deep_ar/output/",
         enable_sagemaker_metrics = True
     )
     print('**** Set Hyperparameters for Algorithm *****')
     estimator.set_hyperparameters(**hyperparameters)
     
-    training_data_uri = processing_step.properties.ProcessingOutputConfig.Outputs["train_data"].S3Output.S3Uri.to_string()
-    testing_data_uri = processing_step.properties.ProcessingOutputConfig.Outputs["test_data"].S3Output.S3Uri.to_string()
     # Set pipeline training step
     train_step = TrainingStep(
-        name="ModelTrainingStep",
+        name="modeltrain",
         estimator=estimator,
         inputs={
-            "train": training_data_uri ,
-            "test": testing_data_uri }
+            "train": processing_step.properties.ProcessingOutputConfig.Outputs["train_data"].S3Output.S3Uri ,
+            "test": processing_step.properties.ProcessingOutputConfig.Outputs["test_data"].S3Output.S3Uri 
+        }
     )
     # Model Creation
     # Create a SageMaker model
@@ -557,10 +551,10 @@ def get_pipeline(
                     train_instance_type, 
                     train_instance_count]
         ,
-        #pipeline_experiment_config=PipelineExperimentConfig(
-        #  experiment_name,
-        #  ExecutionVariables.PIPELINE_EXECUTION_ID
-        #),
+        pipeline_experiment_config=PipelineExperimentConfig(
+          experiment_name,
+          ExecutionVariables.PIPELINE_EXECUTION_ID
+        ),
         steps=[
             processing_step,
             train_step,
@@ -568,7 +562,7 @@ def get_pipeline(
             #step_batch_transform,
             #evaluation_step
         ],
-        sagemaker_session=sess
+        sagemaker_session=sagemaker_session
         
     )
     
