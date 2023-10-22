@@ -165,7 +165,7 @@ def get_pipeline(
     model_package_group_name="WeatherPackageGroup",
     pipeline_name="WeatherPipeline",
     base_job_prefix="Weather",
-    processing_instance_type="ml.m5.large",
+    processing_instance_type="ml.m5.xlarge",
     training_instance_type="ml.m5.large",
 ):
     """Gets a SageMaker ML Pipeline instance working with on abalone data.
