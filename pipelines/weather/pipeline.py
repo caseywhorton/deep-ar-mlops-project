@@ -467,6 +467,20 @@ def get_pipeline(
     role=sagemaker_role
     )
 
+    print('*** Create a model for the Batch Transform ***')
+    # Create a SageMaker model
+    model = sagemaker.model.Model(
+        image_uri=training_image_uri,
+        model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
+        sagemaker_session=sagemaker_session,
+        role=sagemaker_role
+    )
+    
+    # Specify model deployment instance type
+    inputs = sagemaker.inputs.CreateModelInput(instance_type=deploy_instance_type_param)
+    
+    create_model_step = CreateModelStep(name=pipeline_model_name, model=model, inputs=inputs)
+
     # Batch Transform
     print('*** Batch transform Step ***')
     output_path="s3://cw-sagemaker-domain-2/deep_ar/data/predictions/"
