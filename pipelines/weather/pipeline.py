@@ -553,9 +553,9 @@ def get_pipeline(
     # Create the Pipeline with all component steps and parameters
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[process_instance_type_param, 
-                    train_instance_type_param, 
-                    train_instance_count_param]
+        parameters=[process_instance_type, 
+                    train_instance_type, 
+                    train_instance_count]
         ,
         #pipeline_experiment_config=PipelineExperimentConfig(
         #  experiment_name,
