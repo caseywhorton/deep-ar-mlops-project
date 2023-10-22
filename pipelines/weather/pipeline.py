@@ -565,24 +565,15 @@ def get_pipeline(
         name=pipeline_name,
         parameters=[process_instance_type_param, 
                     train_instance_type_param, 
-                    train_instance_count_param, 
-                    deploy_instance_type_param,
-                    deploy_instance_count_param,
-                    clarify_instance_type_param,
-                    skip_check_model_bias_param,
-                    register_new_baseline_model_bias_param,
-                    supplied_baseline_constraints_model_bias_param,
-                    skip_check_model_explainability_param,
-                    register_new_baseline_model_explainability_param,
-                    supplied_baseline_constraints_model_explainability_param,
-                    model_approval_status_param],
+                    train_instance_count_param]
+        ,
         pipeline_experiment_config=PipelineExperimentConfig(
           experiment_name,
           ExecutionVariables.PIPELINE_EXECUTION_ID
         ),
         steps=[
             processing_step,
-            train_step,
+            #train_step,
             #create_model_step,
             #step_batch_transform,
             #evaluation_step
