@@ -192,10 +192,11 @@ def get_pipeline(
     print('***** Get Sagemaker Session *****')
     sess = sagemaker.Session()
     sagemaker_session = get_session(region, default_bucket)
-    if sagemaker_role is None:
-        sagemaker_role = sagemaker.session.get_execution_role(sagemaker_session)
+    print('***** Get Role *****')
+    if role is None:
+        role = sagemaker.session.get_execution_role(sagemaker_session)
     print('**** Role *****')
-    print('sagemaker_role:',sagemaker_role)
+    print('role:',role)
     print('***** Set run parameters *****')
     write_bucket = "cw-sagemaker-domain-2"
     write_prefix = "deep_ar"
@@ -447,7 +448,7 @@ def get_pipeline(
         sagemaker_session=sagemaker_session,
         image_uri=training_image_uri,
         hyperparameters = hyperparameters,
-        role=sagemaker_role,
+        role=role,
         instance_count=1,
         instance_type="ml.c4.xlarge",
         output_path=f"s3://{s3_output_path}",
@@ -472,7 +473,7 @@ def get_pipeline(
     image_uri=training_image_uri,
     model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
     sagemaker_session=sagemaker_session,
-    role=sagemaker_role
+    role=role
     )
 
     print('*** Create a model for the Batch Transform ***')
@@ -481,7 +482,7 @@ def get_pipeline(
         image_uri=training_image_uri,
         model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
         sagemaker_session=sagemaker_session,
-        role=sagemaker_role
+        role=role
     )
     
     # Specify model deployment instance type
@@ -520,7 +521,7 @@ def get_pipeline(
             instance_count=1,
             base_job_name=f"{base_job_prefix}/script-weather-eval",
             sagemaker_session=sagemaker_session,
-            role=sagemaker_role,
+            role=role,
     )
     
     
@@ -583,7 +584,7 @@ def get_pipeline(
     )
     
     # Create a new or update existing Pipeline
-    pipeline.upsert(role_arn=sagemaker_role)
+    pipeline.upsert(role_arn=role)
     
     # Full Pipeline description
     pipeline_definition = json.loads(pipeline.describe()['PipelineDefinition'])
