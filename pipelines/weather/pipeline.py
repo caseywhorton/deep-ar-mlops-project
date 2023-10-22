@@ -584,8 +584,8 @@ def get_pipeline(
             processing_step,
             train_step,
             create_model_step,
-            step_batch_transform,
-            evaluation_step
+            #step_batch_transform,
+            #evaluation_step
         ],
         sagemaker_session=sess
         
