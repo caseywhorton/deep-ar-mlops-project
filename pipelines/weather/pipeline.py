@@ -410,7 +410,7 @@ def get_pipeline(
     
 
     print('***** Training *****')
-    model_path = f"s3://{sagemaker_session.default_bucket()}/{base_job_prefix}/WeatherTrain".to_string()
+    model_path = f"s3://{sagemaker_session.default_bucket()}/{base_job_prefix}/WeatherTrain"
     print('model_path: ',model_path)
     freq = "H"
     prediction_length = 24
@@ -430,15 +430,6 @@ def get_pipeline(
         "early_stopping_patience": "10",
     }
     
-    constants = {
-    "bucket": "cw-sagemaker-domain-1",
-    "key_prefix_train": "deep_ar/data/train",
-    "key_prefix_test": "deep_ar/data/test",
-    "key_prefix_raw": "deep_ar/data/raw/",
-        "image_name": "forecasting-deepar",
-        "region": "us-east-1"
-    }
-    
     s3_output_path = "cw-sagemaker-domain-2/deep_ar/output/"
     
     # set deepar estimator
@@ -451,7 +442,7 @@ def get_pipeline(
         role=role,
         instance_count=1,
         instance_type="ml.c4.xlarge",
-        output_path=f"s3://{s3_output_path}".to_string(),
+        output_path=f"s3://{s3_output_path}",
         enable_sagemaker_metrics = True
     )
     print('**** Set Hyperparameters for Algorithm *****')
@@ -470,7 +461,7 @@ def get_pipeline(
     # Model Creation
     # Create a SageMaker model
     model = sagemaker.model.Model(
-    image_uri=training_image_uri,
+    image_uri=_uri,
     model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
     sagemaker_session=sagemaker_session,
     role=role
@@ -575,7 +566,7 @@ def get_pipeline(
         steps=[
             processing_step,
             #train_step,
-            #create_model_step,
+            create_model_step,
             #step_batch_transform,
             #evaluation_step
         ],
