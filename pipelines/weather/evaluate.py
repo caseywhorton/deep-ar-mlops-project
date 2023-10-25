@@ -92,7 +92,7 @@ if __name__ == "__main__":
     logger.debug("Creating report dictionary...")
     report_dict = {
     "regression_metrics": {
-    "rmse" : {
+    "mse" : {
       "value" : rmse_deepar_value,
       "standard_deviation" : standard_deviation
       }
