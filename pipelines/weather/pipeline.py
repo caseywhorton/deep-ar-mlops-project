@@ -264,7 +264,7 @@ def get_pipeline(
     predictor_instance_count = 1
     predictor_instance_type = "ml.m4.xlarge"
     clarify_instance_count = 1
-    clarify_instance_type = "ml.m4.xlarge"
+    clarify_instance_type = "ml.m4.large"
 
 
     # Set up pipeline input parameters
