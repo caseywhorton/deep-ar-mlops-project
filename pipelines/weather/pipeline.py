@@ -186,6 +186,7 @@ def get_pipeline(
     Returns:
         an instance of a pipeline
     """
+    
     #####
     # Instantiate AWS services session and client objects
     print('***** BASE_DIR', BASE_DIR)
