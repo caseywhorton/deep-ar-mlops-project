@@ -92,7 +92,7 @@ if __name__ == "__main__":
     logger.debug("Creating report dictionary...")
     report_dict = {
     "regression_metrics": {
-    "mse" : {
+    "rmse" : {
       "value" : rmse_deepar_value,
       "standard_deviation" : standard_deviation
       }
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     output_dir = "/opt/ml/processing/evaluation"
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    logger.info("Writing out evaluation report with mse: %f", rmse_deepar_value)
+    logger.info("Writing out evaluation report with rmse: %f", rmse_deepar_value)
     evaluation_path = f"{output_dir}/evaluation.json"
     with open(evaluation_path, "w") as f:
         f.write(json.dumps(report_dict))
