@@ -245,7 +245,7 @@ def get_pipeline(
     explainability_report_output_uri = f"s3://{write_bucket}/{write_prefix}/clarify_output/pipeline/explainability"
 
     # Set names of pipeline objects
-    experiment_name = "weather-forecast-model"
+    experiment_name = "weather-forecast-model-experiment"
     pipeline_name = "weather-forecast-model-pipeline"
     pipeline_model_name = "weather-forecast-model"
     model_package_group_name = "weather-forecast-model-group"
@@ -554,10 +554,10 @@ def get_pipeline(
                     train_instance_type, 
                     train_instance_count]
         ,
-        #pipeline_experiment_config=PipelineExperimentConfig(
-        #  experiment_name,
-        #  ExecutionVariables.PIPELINE_EXECUTION_ID
-        #),
+        pipeline_experiment_config=PipelineExperimentConfig(
+            experiment_name,
+            ExecutionVariables.PIPELINE_EXECUTION_ID
+        ),
         steps=[
             processing_step,
             train_step,
