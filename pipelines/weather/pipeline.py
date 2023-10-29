@@ -260,7 +260,6 @@ def get_pipeline(
     target_col = "target"
     
     # Set instance types and counts
-    process_instance_type = "ml.m5.large"
     process_instance_type = "ml.c5.xlarge"
     train_instance_count = 1
     train_instance_type = "ml.m4.xlarge"
