@@ -396,7 +396,7 @@ def get_pipeline(
     preprocessing_processor = ScriptProcessor(
     command = ['python3'],
     image_uri = preprocessing_image_uri,
-    role = sagemaker_role,
+    role = role,
     instance_count = 1,
     instance_type = 'ml.m5.xlarge',
     max_runtime_in_seconds = 1200
@@ -452,7 +452,7 @@ def get_pipeline(
         sagemaker_session=sagemaker_session,
         image_uri=training_image_uri,
         hyperparameters = hyperparameters,
-        role=sagemaker_role,
+        role=role,
         instance_count=1,
         instance_type="ml.c4.xlarge",
         output_path=f"s3://{s3_output_path}",
@@ -488,7 +488,7 @@ def get_pipeline(
         image_uri=training_image_uri,
         model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
         sagemaker_session=sagemaker_session,
-        role=sagemaker_role
+        role=role
     )
     
     # Specify model deployment instance type
@@ -531,7 +531,7 @@ def get_pipeline(
             instance_count=1,
             base_job_name=f"{base_job_prefix}/script-weather-eval",
             sagemaker_session=sagemaker_session,
-            role=sagemaker_role,
+            role=role,
     )
     
     inputs=[
