@@ -568,7 +568,7 @@ def get_pipeline(
         image_uri = training_image_uri,
         model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
         sagemaker_session = sagemaker_session,
-        role = sagemaker_role,
+        role = role,
     )
     
     
