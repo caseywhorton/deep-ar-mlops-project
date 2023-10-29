@@ -539,7 +539,6 @@ def get_pipeline(
     
     evaluation_step = ProcessingStep(
         name="EvaluateTrainedModelStep",
-        #step_args=step_args,
         processor = script_eval,
         inputs = inputs,
         outputs = outputs,
