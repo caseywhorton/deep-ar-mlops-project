@@ -88,6 +88,9 @@ from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.transformer import Transformer
 from sagemaker.inputs import TransformInput
 from sagemaker.workflow.steps import TransformStep
+from sagemaker.model import Model
+from sagemaker.workflow.model_step import ModelStep
+from sagemaker.workflow.conditions import ConditionLessThanOrEqualTo
 
 ##### Define functions #####
 
@@ -545,6 +548,60 @@ def get_pipeline(
         code = code
     
     )
+
+    print('***** Register *****')
+    # register model step that will be conditionally executed
+    
+    
+    #eval_s3_uri = "s3://cw-sagemaker-domain-2/deep_ar/data/evaluation/evaluation.json"
+    #model_s3_uri = "s3://cw-sagemaker-domain-2/deep_ar/output/pipelines-5lg793fxbnwp-modeltrain-B931euGJY8/output/model.tar.gz"
+    
+    model_metrics = ModelMetrics(
+        model_statistics=MetricsSource(
+            s3_uri="{}/evaluation.json".format(
+                evaluation_step.arguments["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["S3Uri"]
+            )
+        ,
+            content_type="application/json"
+        )
+    )
+    
+    model = Model(
+        image_uri = training_image_uri,
+        model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
+        sagemaker_session = sagemaker_session,
+        role = sagemaker_role,
+    )
+    
+    
+    #model_approval_status ="PendingManualApproval"
+    step_register = RegisterModel(
+     name="RegisterWeatherForecast",
+     model=model,
+     content_types=["application/json"],
+     response_types=["application/json"],
+     inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
+     transform_instances=["ml.m5.xlarge"],
+     model_package_group_name='sipgroup',
+    )
+    
+    
+    
+    # condition step for evaluating model quality and branching execution
+    cond_lte = ConditionLessThanOrEqualTo(
+        left=JsonGet(
+            step_name=evaluation_step.name,
+            property_file=evaluation_report,
+            json_path="regression_metrics.rmse.value"
+        ),
+        right=26,
+    )
+    step_cond = ConditionStep(
+        name="CheckRMSEDeepAREvaluation",
+        conditions=[cond_lte],
+        if_steps=[step_register],
+        else_steps=[],
+    )
     
     print('***** Creating pipeline from steps. *****')
     # Create the Pipeline with all component steps and parameters
@@ -563,7 +620,8 @@ def get_pipeline(
             train_step,
             create_model_step,
             step_batch_transform,
-            evaluation_step
+            evaluation_step,
+            step_cond
         ],
         sagemaker_session=sagemaker_session
         
