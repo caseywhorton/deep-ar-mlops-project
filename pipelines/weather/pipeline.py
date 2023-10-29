@@ -208,13 +208,14 @@ def get_pipeline(
     
     write_bucket = "cw-sagemaker-domain-2"
     write_prefix = "deep_ar"
-    
+    print('***** getting client info *****')
     region = 'us-east-1'
     s3_client = boto3.client("s3", region_name=region)
     sm_client = boto3.client("sagemaker", region_name=region)
     sm_runtime_client = boto3.client("sagemaker-runtime")
     
     # Fetch SageMaker execution role
+    print('**** getting execution role ******')
     sagemaker_role = sagemaker.get_execution_role()
     preprocessing_image_uri = "536826985609.dkr.ecr.us-east-1.amazonaws.com/cw-sagemaker:latest"
     training_image_uri = retrieve("forecasting-deepar", region)
@@ -270,6 +271,11 @@ def get_pipeline(
     clarify_instance_count = 1
     clarify_instance_type = "ml.m4.xlarge"
 
+    # processing step for feature engineering
+    input_data_uri = f"s3://{write_bucket}/{write_prefix}/data/train" #ok
+    print('***** Get pipeline session *****')
+    pipeline_session = get_pipeline_session(region, default_bucket)
+    
     # Set processing instance type
     process_instance_type_param = ParameterString(
         name="ProcessingInstanceType",
@@ -354,10 +360,7 @@ def get_pipeline(
         default_value=input_data_uri,
     )
 
-    # processing step for feature engineering
-    input_data_uri = f"s3://{write_bucket}/{write_prefix}/data/train" #ok
-    print('***** Get pipeline session *****')
-    pipeline_session = get_pipeline_session(region, default_bucket)
+    
     
     #inputs = []
     print('***** Preprocessing *****')
