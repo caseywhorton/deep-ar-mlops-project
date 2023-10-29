@@ -580,7 +580,7 @@ def get_pipeline(
      response_types=["application/json"],
      inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
      transform_instances=["ml.m5.xlarge"],
-     model_package_group_name='sipgroup',
+     model_package_group_name='weather-forecast-hourly',
     )
     
     
