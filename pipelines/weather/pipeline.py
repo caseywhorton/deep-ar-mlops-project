@@ -89,14 +89,6 @@ from sagemaker.transformer import Transformer
 from sagemaker.inputs import TransformInput
 from sagemaker.workflow.steps import TransformStep
 
-
-from sagemaker.workflow.execution_variables import ExecutionVariables
-from sagemaker.workflow.pipeline_experiment_config import PipelineExperimentConfig
-
-from sagemaker.workflow.conditions import ConditionLessThanOrEqualTo
-
-from sagemaker.model import Model
-from sagemaker.workflow.model_step import ModelStep
 ##### Define functions #####
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -279,7 +271,7 @@ def get_pipeline(
 
     # Set processing instance type
     print('***** Set instance types *****')
-    # Set up pipeline input parameters
+   # Set up pipeline input parameters
 
     # Set processing instance type
     process_instance_type_param = ParameterString(
@@ -515,12 +507,11 @@ def get_pipeline(
             instance_count=1,
             base_job_name=f"{base_job_prefix}/script-weather-eval",
             sagemaker_session=sagemaker_session,
-            role=sagemaker_role,
+            role=role,
     )
     
     
-    inputs=[
-        ProcessingInput(
+    inputs=[ProcessingInput(
         source=step_batch_transform.properties.TransformInput.DataSource.S3DataSource.S3Uri,
         destination="/opt/ml/processing/actuals"),
             ProcessingInput(#source=output_path + "test.json.out",
@@ -536,76 +527,12 @@ def get_pipeline(
         destination = f"{output_path}evaluation",
         output_name = "evaluation")
     ]
-    code="evaluate.py"
-    
-    evaluation_report = PropertyFile(
-        name="WeatherForecastEvaluationReport",
-        output_name="evaluation",
-        path="evaluation.json",
-    )
-    
-    evaluation_step = ProcessingStep(
-        name="EvaluateTrainedModelStep",
-        #step_args=step_args,
-        processor = script_eval,
-        inputs = inputs,
-        outputs = outputs,
-        property_files=[evaluation_report],
-        code = code
-    )
+    code=BASE_DIR + "/evaluate.py"
 
-    print('**** register model *****')
-    # register model step that will be conditionally executed
-    
-    
-    #eval_s3_uri = "s3://cw-sagemaker-domain-2/deep_ar/data/evaluation/evaluation.json"
-    #model_s3_uri = "s3://cw-sagemaker-domain-2/deep_ar/output/pipelines-5lg793fxbnwp-modeltrain-B931euGJY8/output/model.tar.gz"
-    
-    model_metrics = ModelMetrics(
-        model_statistics=MetricsSource(
-            s3_uri="{}/evaluation.json".format(
-                evaluation_step.arguments["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["S3Uri"]
-            )
-        ,
-            content_type="application/json"
-        )
-    )
-    
-    model = Model(
-        image_uri = training_image_uri,
-        model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
-        sagemaker_session = sagemaker_session,
-        role = sagemaker_role,
-    )
-    
-    
-    #model_approval_status ="PendingManualApproval"
-    step_register = RegisterModel(
-     name="RegisterWeatherForecast",
-     model=model,
-     content_types=["application/json"],
-     response_types=["application/json"],
-     inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
-     transform_instances=["ml.m5.xlarge"],
-     model_package_group_name='sipgroup',
-    )
-    
-    
-    
-    # condition step for evaluating model quality and branching execution
-    cond_lte = ConditionLessThanOrEqualTo(
-        left=JsonGet(
-            step_name=evaluation_step.name,
-            property_file=evaluation_report,
-            json_path="regression_metrics.rmse.value"
-        ),
-        right=26,
-    )
-    step_cond = ConditionStep(
-        name="CheckRMSEDeepAREvaluation",
-        conditions=[cond_lte],
-        if_steps=[step_register],
-        else_steps=[],
+    evaluation_report = PropertyFile(
+    name="WeatherForecastEvaluationReport",
+    output_name="evaluation",
+    path="evaluation.json",
     )
     
     evaluation_step = ProcessingStep(
@@ -623,34 +550,23 @@ def get_pipeline(
     # Create the Pipeline with all component steps and parameters
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[process_instance_type_param, 
-                train_instance_type_param, 
-                train_instance_count_param, 
-                deploy_instance_type_param,
-                deploy_instance_count_param,
-                clarify_instance_type_param,
-                skip_check_model_bias_param,
-                register_new_baseline_model_bias_param,
-                supplied_baseline_constraints_model_bias_param,
-                skip_check_model_explainability_param,
-                register_new_baseline_model_explainability_param,
-                supplied_baseline_constraints_model_explainability_param,
-                model_approval_status_param]
+        parameters=[process_instance_type, 
+                    train_instance_type, 
+                    train_instance_count]
         ,
-            pipeline_experiment_config=PipelineExperimentConfig(
-          experiment_name,
-          ExecutionVariables.PIPELINE_EXECUTION_ID
+        pipeline_experiment_config=PipelineExperimentConfig(
+            experiment_name,
+            ExecutionVariables.PIPELINE_EXECUTION_ID
         ),
         steps=[
-        processing_step,
-        train_step,
-        create_model_step,
-        step_batch_transform,
-        evaluation_step,
-        step_cond,
-        #step_register
+            processing_step,
+            train_step,
+            create_model_step,
+            step_batch_transform,
+            evaluation_step
         ],
-        sagemaker_session=sess        
+        sagemaker_session=sagemaker_session
+        
     )
     
     # Create a new or update existing Pipeline
