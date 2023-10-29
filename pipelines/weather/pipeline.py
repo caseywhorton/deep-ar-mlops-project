@@ -89,6 +89,12 @@ from sagemaker.transformer import Transformer
 from sagemaker.inputs import TransformInput
 from sagemaker.workflow.steps import TransformStep
 
+from sagemaker.model import Model
+from sagemaker.workflow.model_step import ModelStep
+from sagemaker.workflow.conditions import ConditionLessThanOrEqualTo
+from sagemaker.workflow.execution_variables import ExecutionVariables
+from sagemaker.workflow.pipeline_experiment_config import PipelineExperimentConfig
+    
 ##### Define functions #####
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -199,20 +205,20 @@ def get_pipeline(
     print('**** Role *****')
     print('role:',role)
     print('***** Set run parameters *****')
+    
     write_bucket = "cw-sagemaker-domain-2"
     write_prefix = "deep_ar"
     
-    region = sess.boto_region_name
     region = 'us-east-1'
     s3_client = boto3.client("s3", region_name=region)
     sm_client = boto3.client("sagemaker", region_name=region)
     sm_runtime_client = boto3.client("sagemaker-runtime")
     
     # Fetch SageMaker execution role
-    #sagemaker_role = sagemaker.get_execution_role()
-    preprocessing_image_uri = "536826985609.dkr.ecr.us-east-1.amazonaws.com/cw-sagemaker"
+    sagemaker_role = sagemaker.get_execution_role()
+    preprocessing_image_uri = "536826985609.dkr.ecr.us-east-1.amazonaws.com/cw-sagemaker:latest"
     training_image_uri = retrieve("forecasting-deepar", region)
-    
+
     # S3 locations used for parameterizing the notebook run
     read_bucket = "cw-sagemaker-domain-1"
     read_prefix = "deep_ar/data/raw" 
@@ -250,28 +256,19 @@ def get_pipeline(
     pipeline_model_name = "weather-forecast-model"
     model_package_group_name = "weather-forecast-model-group"
     base_job_name_prefix = "weather-forecast"
-    endpoint_config_name = f"{pipeline_model_name}-endpoint-config"
-    endpoint_name = f"{pipeline_model_name}-endpoint"
     
     # Set data parameters
     target_col = "target"
     
     # Set instance types and counts
-    process_instance_type = "ml.m5.large"
+    process_instance_type = "ml.m4.xlarge"
     process_instance_type = "ml.c5.xlarge"
     train_instance_count = 1
     train_instance_type = "ml.m4.xlarge"
     predictor_instance_count = 1
     predictor_instance_type = "ml.m4.xlarge"
     clarify_instance_count = 1
-    clarify_instance_type = "ml.m4.large"
-
-
-    # Set up pipeline input parameters
-
-    # Set processing instance type
-    print('***** Set instance types *****')
-   # Set up pipeline input parameters
+    clarify_instance_type = "ml.m4.xlarge"
 
     # Set processing instance type
     process_instance_type_param = ParameterString(
@@ -346,10 +343,6 @@ def get_pipeline(
         name="ModelApprovalStatus", default_value="Approved"
     )
     
-    input_data_uri = f"s3://{write_bucket}/{write_prefix}/data/train" #ok
-    print('***** Get pipeline session *****')
-    pipeline_session = get_pipeline_session(region, default_bucket)
-    
     # parameters for pipeline execution
     processing_instance_count = ParameterInteger(name="ProcessingInstanceCount",
                                                  default_value=1)
@@ -362,54 +355,66 @@ def get_pipeline(
     )
 
     # processing step for feature engineering
-
+    input_data_uri = f"s3://{write_bucket}/{write_prefix}/data/train" #ok
+    print('***** Get pipeline session *****')
+    pipeline_session = get_pipeline_session(region, default_bucket)
+    
     #inputs = []
     print('***** Preprocessing *****')
-    outputs = [
-    ProcessingOutput(
-        source = "/opt/ml/processing/output/full_data",
-        destination = f"{output_data_uri}full_data",
-        output_name = "full_data"
-    ),
-    ProcessingOutput(
-        source = "/opt/ml/processing/output/train",
-        destination = f"{output_data_uri}train",
-        output_name = "train_data"
-    ),
-    ProcessingOutput(
-        source = "/opt/ml/processing/output/test",
-        destination = f"{output_data_uri}test",
-        output_name = "test_data"
+    # we will use the script created in this local directory
+
+    # Upload processing script to S3
+    s3_client.upload_file(
+        Filename="deep_ar_preprocessor.py",
+        Bucket=write_bucket,
+        Key=f"{write_prefix}/scripts/deep_ar_preprocessor.py"
     )
+    
+    input_code_uri = f"s3://{write_bucket}/{write_prefix}/scripts/deep_ar_preprocessor.py"
+    
+    inputs = [
+    ]
+    
+    outputs = [
+        ProcessingOutput(
+            source = "/opt/ml/processing/output/full_data",
+            destination = f"{output_data_uri}full_data",
+            output_name = "full_data"
+        ),
+        ProcessingOutput(
+            source = "/opt/ml/processing/output/train",
+            destination = f"{output_data_uri}train",
+            output_name = "train_data"
+        ),
+        ProcessingOutput(
+            source = "/opt/ml/processing/output/test",
+            destination = f"{output_data_uri}test",
+            output_name = "test_data"
+        )
     ]
 
     preprocessing_processor = ScriptProcessor(
     command = ['python3'],
     image_uri = preprocessing_image_uri,
-    role = role,
+    role = sagemaker_role,
     instance_count = 1,
     instance_type = 'ml.m5.xlarge',
-    max_runtime_in_seconds = 1200,
-      base_job_name = f"{base_job_prefix}/deepar-weather-preprocess",
-      sagemaker_session=sagemaker_session
+    max_runtime_in_seconds = 1200
     )
-
-    processing_step = ProcessingStep(
-    name = "DataPreprocessingStep",
-    processor = preprocessing_processor,
-    outputs = outputs,
-    job_arguments = ["--split-days","24",
-                     "--region", region, 
-                     "--bucket", read_bucket, 
-                     "--prefix", read_prefix, 
-                    "--target-feature", "properties.relativeHumidity.value"], 
-        code = BASE_DIR + '/preprocess.py'
-   # code = os.path.join(BASE_DIR, "preprocess.py")
-    )
-
-    ####
     
-
+    processing_step = ProcessingStep(
+        name = "DataPreprocessingStep",
+        processor = preprocessing_processor,
+        #inputs = inputs,
+        outputs = outputs,
+        job_arguments = ["--split-days","24",
+                         "--region", region, 
+                         "--bucket", read_bucket,
+                         "--prefix", read_prefix,
+                        "--target-feature", "properties.relativeHumidity.value"],
+        code = "deep_ar_preprocessor.py"
+    )
+    
     print('***** Training *****')
     freq = "H"
     prediction_length = 24
@@ -417,42 +422,56 @@ def get_pipeline(
     
     hyperparameters = {
         "time_freq": freq,
-        "context_length": context_length,
-        "prediction_length": prediction_length,
-        "num_cells": 40,
-        "num_layers": 5,
+        "context_length": str(context_length),
+        "prediction_length": str(prediction_length),
+        "num_cells": "40",
+        "num_layers": "5",
         "likelihood": "gaussian",
-        "epochs": 10,
-        "mini_batch_size": 36,
-        "learning_rate": 0.001,
-        "dropout_rate": 0.05,
-        "early_stopping_patience": 10,
+        "epochs": "10",
+        "mini_batch_size": "36",
+        "learning_rate": "0.001",
+        "dropout_rate": "0.05",
+        "early_stopping_patience": "10",
     }
-        
+    
+    constants = {
+    "bucket": "cw-sagemaker-domain-1",
+    "key_prefix_train": "deep_ar/data/train",
+    "key_prefix_test": "deep_ar/data/test",
+    "key_prefix_raw": "deep_ar/data/raw/",
+        "image_name": "forecasting-deepar",
+        "region": "us-east-1"
+    }
+    
+    s3_output_path = "cw-sagemaker-domain-2/deep_ar/output/"
+    
+    # set deepar estimator
+    sagemaker_session = sagemaker.Session()
+    
     estimator = sagemaker.estimator.Estimator(
         sagemaker_session=sagemaker_session,
         image_uri=training_image_uri,
         hyperparameters = hyperparameters,
-        role=role,
+        role=sagemaker_role,
         instance_count=1,
         instance_type="ml.c4.xlarge",
-        output_path="s3://cw-sagemaker-domain-2/deep_ar/output/",
+        output_path=f"s3://{s3_output_path}",
         enable_sagemaker_metrics = True
     )
-    print('**** Set Hyperparameters for Algorithm *****')
+    
     estimator.set_hyperparameters(**hyperparameters)
     
-    # Set pipeline training step
+    training_data_uri = processing_step.properties.ProcessingOutputConfig.Outputs["train_data"].S3Output.S3Uri
+    testing_data_uri = processing_step.properties.ProcessingOutputConfig.Outputs["test_data"].S3Output.S3Uri
+    
     train_step = TrainingStep(
-        name="modeltrain",
+        name="ModelTrainingStep",
         estimator=estimator,
         inputs={
-            "train": TrainingInput(processing_step.properties.ProcessingOutputConfig.Outputs["train_data"].S3Output.S3Uri,
-                                  content_type='json') ,
-            "test": TrainingInput(processing_step.properties.ProcessingOutputConfig.Outputs["test_data"].S3Output.S3Uri,
-                                  content_type='json')
-        }
+            "train": training_data_uri ,
+            "test": testing_data_uri }
     )
+
     # Model Creation
     # Create a SageMaker model
     model = sagemaker.model.Model(
@@ -464,11 +483,12 @@ def get_pipeline(
 
     print('*** Create a model for the Batch Transform ***')
     # Create a SageMaker model
+    # Create a SageMaker model
     model = sagemaker.model.Model(
         image_uri=training_image_uri,
         model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
         sagemaker_session=sagemaker_session,
-        role=role
+        role=sagemaker_role
     )
     
     # Specify model deployment instance type
@@ -479,8 +499,10 @@ def get_pipeline(
     # Batch Transform
     print('*** Batch transform Step ***')
     output_path="s3://cw-sagemaker-domain-2/deep_ar/data/predictions/"
-    
+
     model_name = create_model_step.properties.ModelName
+    
+    #model_name = "pipelines-5lg793fxbnwp-weather-forecast-mod-FMpzsyaD2Y"
     
     transformer = Transformer(model_name = model_name,
                               instance_count = 1,
@@ -488,14 +510,16 @@ def get_pipeline(
                               output_path = output_path,
                               base_transform_job_name = "deepar-batch-transform-124",
                               sagemaker_session=sagemaker_session)
+    
     input_data = sagemaker.inputs.TransformInput(data = "s3://cw-sagemaker-domain-2/deep_ar/data/test/test.json")
-
+    
     step_batch_transform = TransformStep(
         name="GetForecastsForEvaluationStep",
         transformer = transformer,
         inputs = input_data
     )
 
+    print('***** Evaluate Batch Transform Steps *****')
     # Evaluate Model Predictions
     output_path="s3://cw-sagemaker-domain-2/deep_ar/data/"
     base_job_prefix = "Weather"
@@ -507,11 +531,11 @@ def get_pipeline(
             instance_count=1,
             base_job_name=f"{base_job_prefix}/script-weather-eval",
             sagemaker_session=sagemaker_session,
-            role=role,
+            role=sagemaker_role,
     )
     
-    
-    inputs=[ProcessingInput(
+    inputs=[
+        ProcessingInput(
         source=step_batch_transform.properties.TransformInput.DataSource.S3DataSource.S3Uri,
         destination="/opt/ml/processing/actuals"),
             ProcessingInput(#source=output_path + "test.json.out",
@@ -520,19 +544,18 @@ def get_pipeline(
             )
            ]
     
-    
     outputs = [
     ProcessingOutput(
         source = "/opt/ml/processing/evaluation",
         destination = f"{output_path}evaluation",
         output_name = "evaluation")
     ]
-    code=BASE_DIR + "/evaluate.py"
-
+    code=BASE_DIR + "evaluate.py"
+    
     evaluation_report = PropertyFile(
-    name="WeatherForecastEvaluationReport",
-    output_name="evaluation",
-    path="evaluation.json",
+        name="WeatherForecastEvaluationReport",
+        output_name="evaluation",
+        path="evaluation.json",
     )
     
     evaluation_step = ProcessingStep(
@@ -543,34 +566,96 @@ def get_pipeline(
         outputs = outputs,
         property_files=[evaluation_report],
         code = code
+    )
+
+    print('***** Register Model *****')
+    # register model step that will be conditionally executed
     
+    #eval_s3_uri = "s3://cw-sagemaker-domain-2/deep_ar/data/evaluation/evaluation.json"
+    #model_s3_uri = "s3://cw-sagemaker-domain-2/deep_ar/output/pipelines-5lg793fxbnwp-modeltrain-B931euGJY8/output/model.tar.gz"
+    
+    model_metrics = ModelMetrics(
+        model_statistics=MetricsSource(
+            s3_uri="{}/evaluation.json".format(
+                evaluation_step.arguments["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["S3Uri"]
+            )
+        ,
+            content_type="application/json"
+        )
+    )
+    
+    model = Model(
+        image_uri = training_image_uri,
+        model_data=train_step.properties.ModelArtifacts.S3ModelArtifacts,
+        sagemaker_session = sagemaker_session,
+        role = sagemaker_role,
+    )
+    
+    
+    #model_approval_status ="PendingManualApproval"
+    step_register = RegisterModel(
+     name="RegisterWeatherForecast",
+     model=model,
+     content_types=["application/json"],
+     response_types=["application/json"],
+     inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
+     transform_instances=["ml.m5.xlarge"],
+     model_package_group_name='sipgroup',
+    )
+    
+    
+    # condition step for evaluating model quality and branching execution
+    cond_lte = ConditionLessThanOrEqualTo(
+        left=JsonGet(
+            step_name=evaluation_step.name,
+            property_file=evaluation_report,
+            json_path="regression_metrics.rmse.value"
+        ),
+        right=26,
+    )
+    step_cond = ConditionStep(
+        name="CheckRMSEDeepAREvaluation",
+        conditions=[cond_lte],
+        if_steps=[step_register],
+        else_steps=[],
     )
     
     print('***** Creating pipeline from steps. *****')
     # Create the Pipeline with all component steps and parameters
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[process_instance_type, 
-                    train_instance_type, 
-                    train_instance_count]
-        ,
+        parameters=[process_instance_type_param, 
+                    train_instance_type_param, 
+                    train_instance_count_param, 
+                    deploy_instance_type_param,
+                    deploy_instance_count_param,
+                    clarify_instance_type_param,
+                    skip_check_model_bias_param,
+                    register_new_baseline_model_bias_param,
+                    supplied_baseline_constraints_model_bias_param,
+                    skip_check_model_explainability_param,
+                    register_new_baseline_model_explainability_param,
+                    supplied_baseline_constraints_model_explainability_param,
+                    model_approval_status_param],
         pipeline_experiment_config=PipelineExperimentConfig(
-            experiment_name,
-            ExecutionVariables.PIPELINE_EXECUTION_ID
+          experiment_name,
+          ExecutionVariables.PIPELINE_EXECUTION_ID
         ),
         steps=[
             processing_step,
             train_step,
             create_model_step,
             step_batch_transform,
-            evaluation_step
+            evaluation_step,
+            step_cond,
+            #step_register
         ],
-        sagemaker_session=sagemaker_session
+        sagemaker_session=sess
         
     )
-    
+
     # Create a new or update existing Pipeline
-    pipeline.upsert(role_arn=role)
+    pipeline.upsert(role_arn=sagemaker_role)
     
     # Full Pipeline description
     pipeline_definition = json.loads(pipeline.describe()['PipelineDefinition'])
