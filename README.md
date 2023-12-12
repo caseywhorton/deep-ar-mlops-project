@@ -1,7 +1,8 @@
 # deep-ar-mlops-project
 
-The repo provides a starting point for bringing your SageMaker Pipeline development to production.
+This repository contains code for an AWS Sagemaker pipeline that automates the training of a time-series forecasting model. The algorithm used is the DeepAR algorithm, and the use-case is described in the [electric-weather](https://github.com/caseywhorton/electric-weather) repository.
 
+# Directory Structure
 ```
 |-- codebuild-buildspec.yml
 |-- CONTRIBUTING.md
